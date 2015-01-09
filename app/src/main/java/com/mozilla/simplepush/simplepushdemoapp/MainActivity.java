@@ -18,7 +18,13 @@ import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.ConnectionResult;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.drafts.Draft_76;
+import org.java_websocket.handshake.ServerHandshake;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -187,6 +193,38 @@ public class MainActivity extends ActionBarActivity {
     private void sendRegistrationIdToBackend(String regid) {
         //TODO: Send the regId out.
         Log.i(TAG, "Sending out Registration message for RegId: " + regid);
+        String target = "ws://localhost:8081";
+        try {
+            //TODO: FINISH THIS!
+            WebSocketClient ws = new WebSocketClient(new URI(target), new Draft_76()) {
+                private String TAG = "WEBSOCKET";
+
+                @Override
+                public void onMessage(String message) {
+                    Log.i(TAG, "message got:" + message + "\n");
+                    // On Hello, send register + proping content
+                    // On register, store response, close socket, return to regular broadcasting.
+                }
+
+                @Override
+                public void onOpen(ServerHandshake handshake) {
+                    Log.i(TAG, "handshake with: " + getURI());
+                    // SEND HELLO
+                }
+
+                @Override
+                public void onClose(int code, String reason, boolean remote) {
+                    Log.i(TAG, "Disconnected! " + getURI() + " Code:" + code + " " + reason + "\n");
+                }
+
+                @Override
+                public void onError(Exception ex) {
+                    Log.e(TAG, "### EXCEPTION: " + ex + "\n");
+                }
+            };
+        }catch (URISyntaxException ex) {
+            Log.e(TAG, "Bad URL for websocket.");
+        }
     }
 
     @Override

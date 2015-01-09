@@ -9,5 +9,7 @@
     <string name="clear">Clear</string>
     <string name="no_content">No content</string>
     <string name="app_title">SimplePush Demo App</string>
+    <string name="push_host">wss://push.services.mozilla.org/</string>
+    <string name="push_host_title">Push Host:</string>
 
 </resources>

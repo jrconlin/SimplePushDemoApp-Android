@@ -8,9 +8,12 @@ import android.os.AsyncTask;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
@@ -25,6 +28,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft_76;
 import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.json.JSONStringer;
 
 
 public class MainActivity extends ActionBarActivity {
@@ -39,17 +46,20 @@ public class MainActivity extends ActionBarActivity {
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
     TextView mDisplay;
+    EditText editText;
     GoogleCloudMessaging gcm;
     AtomicInteger msgId = new AtomicInteger();
     Context context;
 
     String regid;
+    String target;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         mDisplay = (TextView) findViewById(R.id.display);
+        editText = (EditText) findViewById(R.id.editText);
 
         context = getApplicationContext();
         if (checkPlayServices()) {
@@ -62,6 +72,19 @@ public class MainActivity extends ActionBarActivity {
         } else {
             Log.i(TAG, "No valid Google Play Services APK found");
         }
+
+        editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                boolean handled = false;
+                if (actionId == EditorInfo.IME_ACTION_SEND) {
+                    target = v.getText().toString();
+                    Log.i(TAG, "Setting target to " + target);
+                    handled = true;
+                }
+                return handled;
+            }
+        });
     }
 
     @Override
@@ -125,7 +148,7 @@ public class MainActivity extends ActionBarActivity {
                     Log.d(TAG, SENDER_ID + " registering " + regid);
                     msg = "Device registered, registration ID = " + regid;
                     // TODO: Send Hello with Registration
-                    sendRegistrationIdToBackend(regid);
+                    sendRegistrationIdToBackend(regid, target);
                     storeRegistrationId(context, regid);
                 } catch (IOException ex) {
                     msg = "Error: registerInBackground: doInBackground: " + ex.getMessage();
@@ -190,10 +213,9 @@ public class MainActivity extends ActionBarActivity {
         return getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
     }
 
-    private void sendRegistrationIdToBackend(String regid) {
+    private void sendRegistrationIdToBackend(String regid, String target) {
         //TODO: Send the regId out.
-        Log.i(TAG, "Sending out Registration message for RegId: " + regid);
-        String target = "ws://localhost:8081";
+        Log.i(TAG, "Sending out Registration message for RegId: " + regid + " to " + target);
         try {
             //TODO: FINISH THIS!
             WebSocketClient ws = new WebSocketClient(new URI(target), new Draft_76()) {
@@ -209,7 +231,16 @@ public class MainActivity extends ActionBarActivity {
                 @Override
                 public void onOpen(ServerHandshake handshake) {
                     Log.i(TAG, "handshake with: " + getURI());
-                    // SEND HELLO
+                    try {
+                        JSONObject json = new JSONObject();
+                        json.put("messageType", "hello");
+                        json.put("uaid", "");
+                        json.put("channelIDs", new JSONArray());
+                        Log.i(TAG, "Sending object: " + json.toString());
+                        // this.send(json.toString());
+                    }catch (JSONException ex) {
+                        Log.e(TAG, "JSON Exception: " + ex);
+                    }
                 }
 
                 @Override

@@ -12,7 +12,8 @@
         android:layout_alignParentTop="true"
         android:layout_alignParentRight="true"
         android:layout_alignParentEnd="true"
-        android:background="@color/background_material_light">
+        android:background="@color/background_material_light"
+        android:weightSum="1">
 
         <TextView
             android:layout_width="fill_parent"
@@ -48,7 +49,27 @@
 
         <TextView android:text="@string/no_content"
             android:layout_width="fill_parent"
+            android:layout_height="0dp"
+            android:id="@+id/display"
+            android:layout_weight="0.87" />
+
+        <TextView
+            android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:id="@+id/display" />
+            android:textAppearance="?android:attr/textAppearanceSmall"
+            android:text="@string/push_host_title"
+            android:id="@+id/textView2"
+            android:layout_gravity="bottom"
+            android:labelFor="@+id/editText" />
+
+        <EditText
+            android:layout_width="match_parent"
+            android:layout_height="@dimen/abc_text_size_display_1_material"
+            android:id="@+id/editText"
+            android:hint="@string/push_host"
+            android:enabled="true"
+            android:inputType="textUri"
+            android:typeface="monospace"
+            />
 
     </LinearLayout>

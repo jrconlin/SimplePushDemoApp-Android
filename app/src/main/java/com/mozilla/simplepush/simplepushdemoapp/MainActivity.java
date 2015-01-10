@@ -77,15 +77,18 @@ public class MainActivity extends ActionBarActivity {
             @Override
             public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                 boolean handled = false;
-                if (actionId == EditorInfo.IME_ACTION_SEND) {
-                    target = v.getText().toString();
-                    Log.i(TAG, "Setting target to " + target);
+                if (actionId == EditorInfo.IME_ACTION_SEND ||
+                        (actionId == EditorInfo.IME_ACTION_UNSPECIFIED &&
+                        event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                    setTarget();
                     handled = true;
                 }
                 return handled;
             }
         });
     }
+
+
 
     @Override
     protected void onResume() {
@@ -190,7 +193,14 @@ public class MainActivity extends ActionBarActivity {
             }.execute(null, null, null);
         } else if (view == findViewById(R.id.clear)) {
             mDisplay.setText("");
+        } else if (view == findViewById(R.id.connect)) {
+
         }
+    }
+
+    void setTarget() {
+        target = editText.getText().toString();
+        Log.i(TAG, "Setting target to " + target);
     }
 
     @Override

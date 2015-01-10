@@ -62,14 +62,26 @@
             android:layout_gravity="bottom"
             android:labelFor="@+id/editText" />
 
-        <EditText
-            android:layout_width="match_parent"
-            android:layout_height="@dimen/abc_text_size_display_1_material"
-            android:id="@+id/editText"
-            android:hint="@string/push_host"
-            android:enabled="true"
-            android:inputType="textUri"
-            android:typeface="monospace"
-            />
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content">
+
+            <EditText
+                android:layout_width="fill_parent"
+                android:layout_height="@dimen/abc_text_size_display_2_material"
+                android:id="@+id/editText"
+                android:hint="@string/push_host"
+                android:enabled="true"
+                android:inputType="textUri"
+                android:typeface="monospace"
+                />
+
+            <Button
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/host_connect"
+                android:id="@+id/connect" />
+        </LinearLayout>
 
     </LinearLayout>

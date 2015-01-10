@@ -11,5 +11,6 @@
     <string name="app_title">SimplePush Demo App</string>
     <string name="push_host">wss://push.services.mozilla.org/</string>
     <string name="push_host_title">Push Host:</string>
+    <string name="host_connect">Connect</string>
 
 </resources>

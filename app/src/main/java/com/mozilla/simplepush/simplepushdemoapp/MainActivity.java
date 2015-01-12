@@ -52,7 +52,6 @@ public class MainActivity extends ActionBarActivity {
     Context context;
 
     String regid;
-    String target;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -80,7 +79,7 @@ public class MainActivity extends ActionBarActivity {
                 if (actionId == EditorInfo.IME_ACTION_SEND ||
                         (actionId == EditorInfo.IME_ACTION_UNSPECIFIED &&
                         event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
-                    setTarget();
+                    registerInBackground();
                     handled = true;
                 }
                 return handled;
@@ -100,7 +99,8 @@ public class MainActivity extends ActionBarActivity {
         int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
         if (resultCode != ConnectionResult.SUCCESS) {
             if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
-                GooglePlayServicesUtil.getErrorDialog(resultCode, this, PLAY_SERVICES_RESOLUTION_REQUEST).show();
+                GooglePlayServicesUtil.getErrorDialog(resultCode, this,
+                        PLAY_SERVICES_RESOLUTION_REQUEST).show();
 
             } else {
                 Log.i(TAG, "This device is not supported");
@@ -151,7 +151,7 @@ public class MainActivity extends ActionBarActivity {
                     Log.d(TAG, SENDER_ID + " registering " + regid);
                     msg = "Device registered, registration ID = " + regid;
                     // TODO: Send Hello with Registration
-                    sendRegistrationIdToBackend(regid, target);
+                    sendRegistrationIdToBackend(regid);
                     storeRegistrationId(context, regid);
                 } catch (IOException ex) {
                     msg = "Error: registerInBackground: doInBackground: " + ex.getMessage();
@@ -194,13 +194,15 @@ public class MainActivity extends ActionBarActivity {
         } else if (view == findViewById(R.id.clear)) {
             mDisplay.setText("");
         } else if (view == findViewById(R.id.connect)) {
-
+            Log.i(TAG, "## Connection requested");
+            registerInBackground();
         }
     }
 
-    void setTarget() {
-        target = editText.getText().toString();
+    private String getTarget() {
+        String target = editText.getText().toString();
         Log.i(TAG, "Setting target to " + target);
+        return target;
     }
 
     @Override
@@ -212,7 +214,8 @@ public class MainActivity extends ActionBarActivity {
 
     private static int getAppVersion(Context context) {
         try {
-            PackageInfo packageInfo = context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            PackageInfo packageInfo =
+                    context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
             return packageInfo.versionCode;
         } catch (PackageManager.NameNotFoundException ex) {
             throw new RuntimeException("Could not get package name: " + ex);
@@ -223,8 +226,9 @@ public class MainActivity extends ActionBarActivity {
         return getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
     }
 
-    private void sendRegistrationIdToBackend(String regid, String target) {
+    private void sendRegistrationIdToBackend(String regid) {
         //TODO: Send the regId out.
+        String target = getTarget();
         Log.i(TAG, "Sending out Registration message for RegId: " + regid + " to " + target);
         try {
             //TODO: FINISH THIS!

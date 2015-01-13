@@ -4,10 +4,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.os.AsyncTask;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -18,29 +17,15 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import com.google.android.gms.gcm.GoogleCloudMessaging;
-import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GooglePlayServicesUtil;
+import com.google.android.gms.gcm.GoogleCloudMessaging;
 
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Locale;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.apache.http.Header;
-import org.apache.http.HeaderIterator;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
-import org.apache.http.ProtocolVersion;
-import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.client.DefaultRequestDirector;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.params.BasicHttpParams;
 import org.apache.http.params.HttpParams;
@@ -51,22 +36,24 @@ import org.java_websocket.handshake.ServerHandshake;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.json.JSONStringer;
 import org.json.JSONTokener;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class MainActivity extends ActionBarActivity {
 
-    String SENDER_ID = "1009375523940";
-    String CHANNEL_ID = "abad1dea-0000-0000-0000-000000000000";
-
-    static final String TAG = "SimplepushDemoApp";
-    static final String APP = "com.mozilla.simplepush.simplepushdemoapp";
     public static final String EXTRA_MESSAGE = "message";
     public static final String PROPERTY_REG_ID = "registration_id";
+    static final String TAG = "SimplepushDemoApp";
+    static final String APP = "com.mozilla.simplepush.simplepushdemoapp";
     private static final String PROPERTY_APP_VERSION = "appVersion";
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
-
+    String SENDER_ID = "1009375523940";
+    String CHANNEL_ID = "abad1dea-0000-0000-0000-000000000000";
     TextView mDisplay;
     EditText host_url;
     EditText ping_data;
@@ -78,6 +65,16 @@ public class MainActivity extends ActionBarActivity {
 
     String regid;
     String PushEndpoint;
+
+    private static int getAppVersion(Context context) {
+        try {
+            PackageInfo packageInfo =
+                    context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
+            return packageInfo.versionCode;
+        } catch (PackageManager.NameNotFoundException ex) {
+            throw new RuntimeException("Could not get package name: " + ex);
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -98,18 +95,17 @@ public class MainActivity extends ActionBarActivity {
         }
 
         host_url.setOnEditorActionListener(new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                boolean handled = false;
-                if (actionId == EditorInfo.IME_ACTION_SEND ||
-                        (actionId == EditorInfo.IME_ACTION_UNSPECIFIED &&
-                        event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
-//                    registerInBackground();
-                    handled = true;
-                }
-                return handled;
-            }
-        }
+                                               @Override
+                                               public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                                                   boolean handled = false;
+                                                   if (actionId == EditorInfo.IME_ACTION_SEND ||
+                                                           (actionId == EditorInfo.IME_ACTION_UNSPECIFIED &&
+                                                                   event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                                                       handled = true;
+                                                   }
+                                                   return handled;
+                                               }
+                                           }
         );
     }
 
@@ -175,7 +171,6 @@ public class MainActivity extends ActionBarActivity {
                     regid = gcm.register(SENDER_ID);
                     Log.d(TAG, SENDER_ID + " registering " + regid);
                     msg = "Device registered, registration ID = " + regid;
-                    // TODO: Send Hello with Registration
                     sendRegistrationIdToBackend(regid);
                     storeRegistrationId(context, regid);
                 } catch (IOException ex) {
@@ -236,35 +231,35 @@ public class MainActivity extends ActionBarActivity {
         }
         new AsyncTask<String, Void, Boolean>() {
             @Override
-        protected Boolean doInBackground(String... params) {
-        HttpPut req = new HttpPut(PushEndpoint);
-        HttpParams rparams = new BasicHttpParams();
-        rparams.setLongParameter("version", System.currentTimeMillis());
-        rparams.setParameter("data", data);
-        try {
-            StringEntity entity = new StringEntity(params.toString());
-            entity.setContentType("application/x-www-form-urlencoded");
-            entity.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE,
-                    "text/plain;charset=UTF-8"));
-            req.setEntity(entity);
-            DefaultHttpClient client = new DefaultHttpClient();
-            HttpResponse resp = client.execute(req);
-            int code = resp.getStatusLine().getStatusCode();
-            if ( code >= 200 && code < 300) {
-                return true;
-            }
-        } catch (ClientProtocolException x) {
-            Log.e(TAG, "Could not send Notification " + x);
-        } catch (IOException x) {
-            Log.e(TAG, "Could not send Notification (io) " + x);
-        } catch (Exception e) {
-            Log.e(TAG, "flaming crapsticks", e);
-        }
-        return false;
+            protected Boolean doInBackground(String... params) {
+                HttpPut req = new HttpPut(PushEndpoint);
+                HttpParams rparams = new BasicHttpParams();
+                rparams.setLongParameter("version", System.currentTimeMillis());
+                rparams.setParameter("data", data);
+                try {
+                    StringEntity entity = new StringEntity(params.toString());
+                    entity.setContentType("application/x-www-form-urlencoded");
+                    entity.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE,
+                            "text/plain;charset=UTF-8"));
+                    req.setEntity(entity);
+                    DefaultHttpClient client = new DefaultHttpClient();
+                    HttpResponse resp = client.execute(req);
+                    int code = resp.getStatusLine().getStatusCode();
+                    if (code >= 200 && code < 300) {
+                        return true;
+                    }
+                } catch (ClientProtocolException x) {
+                    Log.e(TAG, "Could not send Notification " + x);
+                } catch (IOException x) {
+                    Log.e(TAG, "Could not send Notification (io) " + x);
+                } catch (Exception e) {
+                    Log.e(TAG, "flaming crapsticks", e);
+                }
+                return false;
             }
 
             @Override
-        protected void onPostExecute(Boolean success) {
+            protected void onPostExecute(Boolean success) {
                 String msg = "was";
                 if (!success) {
                     msg = "was not";
@@ -281,6 +276,7 @@ public class MainActivity extends ActionBarActivity {
         }
         return target;
     }
+
     private String getTarget() {
         String target = host_url.getText().toString();
         Log.i(TAG, "Setting target to " + target);
@@ -292,16 +288,6 @@ public class MainActivity extends ActionBarActivity {
         Log.i(TAG, "## Destroying");
         super.onDestroy();
         //TODO: Unregister?
-    }
-
-    private static int getAppVersion(Context context) {
-        try {
-            PackageInfo packageInfo =
-                    context.getPackageManager().getPackageInfo(context.getPackageName(), 0);
-            return packageInfo.versionCode;
-        } catch (PackageManager.NameNotFoundException ex) {
-            throw new RuntimeException("Could not get package name: " + ex);
-        }
     }
 
     private SharedPreferences getGcmPreferences(Context context) {
@@ -318,6 +304,7 @@ public class MainActivity extends ActionBarActivity {
     private void sendRegistrationIdToBackend(final String regid) {
         String target = getTarget();
         Log.i(TAG, "Sending out Registration message for RegId: " + regid + " to " + target);
+        //TODO: Put this in an async task?
         try {
             URI uri = new URI(target);
             WebSocketClient ws = new WebSocketClient(uri, new Draft_17()) {

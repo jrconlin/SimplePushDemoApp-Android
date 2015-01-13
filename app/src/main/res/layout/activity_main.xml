@@ -1,157 +1,164 @@
     <LinearLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:background="@color/background_material_light"
+        android:orientation="vertical"
+        android:paddingBottom="0dp"
         android:paddingLeft="@dimen/activity_horizontal_margin"
         android:paddingRight="@dimen/activity_horizontal_margin"
         android:paddingTop="@dimen/activity_vertical_margin"
-        android:paddingBottom="0dp"
-        tools:context=".MainActivity"
-        android:orientation="vertical"
-        android:layout_width="fill_parent"
-        android:layout_height="fill_parent"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentEnd="true"
-        android:background="@color/background_material_light"
-        android:weightSum="1">
+        android:weightSum="1"
+        tools:context=".MainActivity">
 
         <TextView
+            android:id="@+id/textView"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:gravity="center_horizontal|top"
             android:text="@string/app_title"
-            android:id="@+id/textView"
-            android:textStyle="bold"
-            android:gravity="center_horizontal|top" />
-        <TextView android:text="@string/no_content"
+            android:textAppearance="?android:attr/textAppearanceLarge"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/display"
             android:layout_width="fill_parent"
             android:layout_height="0dp"
-            android:id="@+id/display"
             android:layout_weight="1.00"
-            android:linksClickable="true" />
+            android:linksClickable="true"
+            android:text="@string/no_content" />
 
         <RelativeLayout
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
             android:layout_margin="0dp"
-            android:padding="0dp"
-            android:gravity="bottom|end">
+            android:gravity="bottom|end"
+            android:orientation="vertical"
+            android:padding="0dp">
 
             <TextView
+                android:id="@+id/host_title"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:textAppearance="?android:attr/textAppearanceSmall"
-                android:text="@string/push_host_title"
-                android:id="@+id/host_title"
-                android:layout_gravity="bottom"
-                android:labelFor="@+id/host_edit"
                 android:layout_alignParentLeft="true"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentTop="true"
+                android:layout_gravity="bottom"
                 android:layout_marginLeft="0dp"
                 android:layout_marginStart="0dp"
-                android:layout_alignParentTop="true"
                 android:layout_marginTop="0dp"
-                android:layout_alignParentStart="true" />
+                android:labelFor="@+id/host_edit"
+                android:text="@string/push_host_title"
+                android:textAppearance="?android:attr/textAppearanceSmall" />
+
             <RelativeLayout
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:layout_alignParentLeft="true"
-                android:layout_marginLeft="0dp"
-                android:layout_alignParentTop="false"
-                android:layout_marginTop="0dp"
-                android:padding="0dp"
                 android:layout_alignParentEnd="true"
-                android:layout_alignParentStart="false">
+                android:layout_alignParentLeft="true"
+                android:layout_alignParentStart="false"
+                android:layout_alignParentTop="false"
+                android:layout_marginLeft="0dp"
+                android:layout_marginTop="0dp"
+                android:orientation="horizontal"
+                android:padding="0dp">
+
                 <EditText
-                    android:layout_width="250dp"
-                    android:layout_height="@dimen/abc_text_size_display_2_material"
                     android:id="@+id/host_edit"
-                    android:hint="@string/push_host"
-                    android:enabled="true"
-                    android:inputType="textUri"
-                    android:layout_gravity="fill_horizontal"
-                    android:typeface="monospace"
-                    android:textSize="@dimen/abc_text_size_body_1_material"
+                    android:layout_width="230dp"
+                    android:layout_height="@dimen/abc_text_size_display_2_material"
                     android:layout_alignParentLeft="true"
-                    android:layout_marginLeft="0dp"
                     android:layout_alignParentTop="true"
+                    android:layout_gravity="fill_horizontal"
+                    android:layout_marginLeft="0dp"
                     android:layout_marginTop="0dp"
+                    android:editable="true"
+                    android:enabled="true"
+                    android:hint="@string/push_host"
+                    android:inputType="textUri"
                     android:padding="0dp"
-                    android:editable="true" />
+                    android:textSize="@dimen/abc_text_size_body_1_material"
+                    android:typeface="monospace" />
 
                 <Button
+                    android:id="@+id/connect"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/host_connect"
-                    android:id="@+id/connect"
-                    android:layout_toEndOf="@id/host_edit"
+                    android:layout_alignParentEnd="true"
+                    android:layout_alignParentLeft="false"
+                    android:layout_alignParentRight="true"
+                    android:layout_alignParentTop="true"
                     android:layout_gravity="end"
                     android:layout_margin="0dp"
-                    android:layout_alignParentLeft="false"
                     android:layout_marginLeft="486dp"
-                    android:layout_alignParentTop="true"
                     android:layout_marginTop="0dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_alignParentRight="true"
+                    android:layout_toEndOf="@id/host_edit"
+                    android:enabled="true"
                     android:onClick="onClick"
-                    android:enabled="true" />
+                    android:text="@string/host_connect" />
             </RelativeLayout>
             <RelativeLayout
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:layout_alignParentLeft="true"
-                android:layout_marginLeft="0dp"
                 android:layout_alignParentTop="true"
-                android:layout_marginTop="50dp">
+                android:layout_marginLeft="0dp"
+                android:layout_marginTop="50dp"
+                android:orientation="horizontal">
+
                 <EditText
-                    android:layout_width="250dp"
-                    android:layout_height="@dimen/abc_text_size_display_2_material"
                     android:id="@+id/message"
-                    android:hint="@string/test_message"
-                    android:enabled="true"
-                    android:inputType="text"
-                    android:typeface="monospace"
-                    android:layout_gravity="fill_horizontal"
+                    android:layout_width="230dp"
+                    android:layout_height="@dimen/abc_text_size_display_2_material"
                     android:layout_alignParentLeft="true"
-                    android:layout_marginLeft="0dp"
                     android:layout_alignParentTop="true"
+                    android:layout_gravity="fill_horizontal"
+                    android:layout_marginLeft="0dp"
                     android:layout_marginTop="0dp"
                     android:clickable="false"
-                    android:editable="true" />
+                    android:editable="true"
+                    android:enabled="true"
+                    android:hint="@string/test_message"
+                    android:inputType="text"
+                    android:typeface="monospace" />
+
                 <Button
+                    android:id="@+id/send"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/send"
-                    android:id="@+id/send"
-                    android:layout_toEndOf="@id/message"
+                    android:layout_alignParentEnd="true"
+                    android:layout_alignParentLeft="false"
+                    android:layout_alignParentRight="true"
+                    android:layout_alignParentTop="true"
                     android:layout_gravity="end"
                     android:layout_margin="0dp"
-                    android:layout_alignParentLeft="false"
                     android:layout_marginLeft="486dp"
-                    android:layout_alignParentTop="true"
                     android:layout_marginTop="0dp"
-                    android:layout_alignParentEnd="true"
-                    android:layout_alignParentRight="true"
+                    android:layout_toEndOf="@id/message"
+                    android:enabled="true"
                     android:onClick="onClick"
-                    android:enabled="true" />
+                    android:text="@string/send" />
             </RelativeLayout>
         <LinearLayout
-            android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_horizontal"
             android:layout_alignParentLeft="true"
-            android:layout_marginLeft="0dp"
             android:layout_alignParentTop="true"
-            android:layout_marginTop="100dp">
+            android:layout_marginLeft="0dp"
+            android:layout_marginTop="100dp"
+            android:gravity="center_horizontal"
+            android:orientation="horizontal">
+
             <Button
+                android:id="@+id/clear"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/clear"
-                android:id="@+id/clear"
-                android:onClick="onClick" />
+                android:onClick="onClick"
+                android:text="@string/clear" />
         </LinearLayout>
     </RelativeLayout>
 

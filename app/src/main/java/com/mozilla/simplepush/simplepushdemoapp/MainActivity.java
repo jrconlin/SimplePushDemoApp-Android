@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -22,13 +23,13 @@ import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.NameValuePair;
 import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPut;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicHeader;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpParams;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft_17;
@@ -41,15 +42,14 @@ import org.json.JSONTokener;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends ActionBarActivity {
 
-    public static final String EXTRA_MESSAGE = "message";
     public static final String PROPERTY_REG_ID = "registration_id";
     static final String TAG = "SimplepushDemoApp";
-    static final String APP = "com.mozilla.simplepush.simplepushdemoapp";
     private static final String PROPERTY_APP_VERSION = "appVersion";
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     String SENDER_ID = "1009375523940";
@@ -60,8 +60,8 @@ public class MainActivity extends ActionBarActivity {
     Button send_button;
     Button connect_button;
     GoogleCloudMessaging gcm;
-    AtomicInteger msgId = new AtomicInteger();
     Context context;
+    Handler handler;
 
     String regid;
     String PushEndpoint;
@@ -121,7 +121,7 @@ public class MainActivity extends ActionBarActivity {
             if (GooglePlayServicesUtil.isUserRecoverableError(resultCode)) {
                 GooglePlayServicesUtil.getErrorDialog(resultCode, this,
                         PLAY_SERVICES_RESOLUTION_REQUEST).show();
-                toggleConnectToSend(false);
+                //toggleConnectToSend(false);
 
             } else {
                 Log.i(TAG, "This device is not supported");
@@ -159,6 +159,9 @@ public class MainActivity extends ActionBarActivity {
         return registrationId;
     }
 
+    /* Register with GCM in the background, returning the result back to the UI thread
+
+     */
     private void registerInBackground() {
         new AsyncTask<Void, Void, String>() {
             @Override
@@ -233,11 +236,17 @@ public class MainActivity extends ActionBarActivity {
             @Override
             protected Boolean doInBackground(String... params) {
                 HttpPut req = new HttpPut(PushEndpoint);
-                HttpParams rparams = new BasicHttpParams();
-                rparams.setLongParameter("version", System.currentTimeMillis());
-                rparams.setParameter("data", data);
+                // HttpParams is NOT what you use here.
+                // NameValuePairs is just a simple hash.
+                List<NameValuePair> rparams = new ArrayList<NameValuePair>(2);
+                rparams.add(new BasicNameValuePair("version",
+                        String.valueOf(System.currentTimeMillis())));
+                rparams.add(new BasicNameValuePair("data", data));
+                Log.i(TAG, "Sending data: " + data);
                 try {
-                    StringEntity entity = new StringEntity(params.toString());
+                    UrlEncodedFormEntity entity = new UrlEncodedFormEntity(rparams);
+                    Log.i(TAG, "params:" + rparams.toString() +
+                            " entity: " + entity.toString());
                     entity.setContentType("application/x-www-form-urlencoded");
                     entity.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE,
                             "text/plain;charset=UTF-8"));
@@ -294,7 +303,7 @@ public class MainActivity extends ActionBarActivity {
         return getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
     }
 
-    void toggleConnectToSend(boolean state) {
+    void ToSend(boolean state) {
         host_url.setEnabled(!state);
         connect_button.setEnabled(!state);
         ping_data.setEnabled(state);
@@ -335,13 +344,16 @@ public class MainActivity extends ActionBarActivity {
                                 mDisplay.setText(txt);
                                 //toggleConnectToSend(true);
                                 break;
+                            case "notification":
+                                mDisplay.append("\nGot SimplePush notification..." + message);
+                                // TODO: I should ack that.
+                                break;
                             default:
                                 Log.e(TAG, "Unknown message type " + msgType);
                         }
                     }catch (JSONException x) {
                         Log.e(TAG, "Could not parse message " + x);
                     }
-                    // On register, store response, close socket, return to regular broadcasting.
                 }
 
                 @Override
@@ -366,7 +378,7 @@ public class MainActivity extends ActionBarActivity {
                 public void onClose(int code, String reason, boolean remote) {
                     Log.i(TAG, "Disconnected! " + getURI() + " Code:" + code + " " + reason + "\n");
                     mDisplay.setText("Disconnected from server");
-                    toggleConnectToSend(false);
+                    //toggleConnectToSend(false);
                 }
 
                 @Override

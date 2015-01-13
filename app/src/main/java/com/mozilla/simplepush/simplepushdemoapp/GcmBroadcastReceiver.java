@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package com.mozilla.simplepush.simplepushdemoapp;
 
 import android.app.Activity;
@@ -9,6 +13,10 @@ import android.util.Log;
 
 /**
  * Created by jconlin on 1/7/2015.
+ */
+
+/**
+ * Handle the GCM Receive event.
  */
 public class GcmBroadcastReceiver extends WakefulBroadcastReceiver {
     @Override

@@ -1,3 +1,7 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 package com.mozilla.simplepush.simplepushdemoapp;
 
 import android.content.Context;
@@ -6,7 +10,6 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Handler;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -46,26 +49,43 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+/**
+ * Main Class for the app.
+ * <p/>
+ * This uses ActionBarActivity, because that's what I was silly enough to pick at first.
+ */
 public class MainActivity extends ActionBarActivity {
 
     public static final String PROPERTY_REG_ID = "registration_id";
     static final String TAG = "SimplepushDemoApp";
     private static final String PROPERTY_APP_VERSION = "appVersion";
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
+    // The SENDER_ID is the Project Number from Google Developer's Console for this
+    // project. 
     String SENDER_ID = "1009375523940";
+    // ChannelID is the SimplePush channel. This is normally generated as a GUID by the
+    // client, but since we're just doing tests and don't really care about the ChannelID...
     String CHANNEL_ID = "abad1dea-0000-0000-0000-000000000000";
+
+    // Various UI controls (TODO: need to add a handler here to allow them to be set from 
+    // additional threads)
     TextView mDisplay;
-    EditText host_url;
-    EditText ping_data;
-    Button send_button;
-    Button connect_button;
+    EditText hostUrl;
+    EditText pingData;
+    Button sendButton;
+    Button connectButton;
     GoogleCloudMessaging gcm;
     Context context;
-    Handler handler;
 
+    // GCM RegistrationId 
     String regid;
     String PushEndpoint;
 
+    /** get the app version from the package manifest
+     *
+     * @param context app Context
+     * @return
+     */
     private static int getAppVersion(Context context) {
         try {
             PackageInfo packageInfo =
@@ -76,17 +96,24 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+    /** Initialize the app from the saved state
+     *
+     * @param savedInstanceState
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Set the convenience globals.
         mDisplay = (TextView) findViewById(R.id.display);
-        host_url = (EditText) findViewById(R.id.host_edit);
-        ping_data = (EditText) findViewById(R.id.message);
-        send_button = (Button) findViewById(R.id.send);
-        connect_button = (Button) findViewById(R.id.connect);
+        hostUrl = (EditText) findViewById(R.id.host_edit);
+        pingData = (EditText) findViewById(R.id.message);
+        sendButton = (Button) findViewById(R.id.send);
+        connectButton = (Button) findViewById(R.id.connect);
 
         context = getApplicationContext();
+        // Check that GCM is available on this device.
         if (checkPlayServices()) {
             gcm = GoogleCloudMessaging.getInstance(this);
             regid = getRegistrationId(context);
@@ -94,13 +121,33 @@ public class MainActivity extends ActionBarActivity {
             Log.i(TAG, "No valid Google Play Services APK found");
         }
 
-        host_url.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        // detect the "enter/submit" key for the editor views.
+        hostUrl.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+                                              @Override
+                                              public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                                                  boolean handled = false;
+                                                  // yes, be very careful about this, else you can send multiple actions.
+                                                  if (actionId == EditorInfo.IME_ACTION_SEND ||
+                                                          (actionId == EditorInfo.IME_ACTION_UNSPECIFIED &&
+                                                                  event.getKeyCode() == KeyEvent.KEYCODE_ENTER &&
+                                                                  event.getAction() == KeyEvent.ACTION_DOWN)) {
+                                                      registerInBackground();
+                                                      handled = true;
+                                                  }
+                                                  return handled;
+                                              }
+                                          }
+        );
+
+        pingData.setOnEditorActionListener(new TextView.OnEditorActionListener() {
                                                @Override
                                                public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
                                                    boolean handled = false;
                                                    if (actionId == EditorInfo.IME_ACTION_SEND ||
                                                            (actionId == EditorInfo.IME_ACTION_UNSPECIFIED &&
-                                                                   event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                                                                   event.getKeyCode() == KeyEvent.KEYCODE_ENTER &&
+                                                                   event.getAction() == KeyEvent.ACTION_DOWN)) {
+                                                       SendNotification(getMessage());
                                                        handled = true;
                                                    }
                                                    return handled;
@@ -109,12 +156,19 @@ public class MainActivity extends ActionBarActivity {
         );
     }
 
+    /** required method
+     *
+     */
     @Override
     protected void onResume() {
         super.onResume();
         checkPlayServices();
     }
 
+    /** Are we still able to use Play Services?
+     *
+     * @return
+     */
     private boolean checkPlayServices() {
         int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
         if (resultCode != ConnectionResult.SUCCESS) {
@@ -132,6 +186,11 @@ public class MainActivity extends ActionBarActivity {
         return true;
     }
 
+    /** Store the registration ID to shared preferences.
+     *
+     * @param context Application context
+     * @param regId GCM Registration ID
+     */
     private void storeRegistrationId(Context context, String regId) {
         final SharedPreferences prefs = getGcmPreferences(context);
         int appVersion = getAppVersion(context);
@@ -159,7 +218,7 @@ public class MainActivity extends ActionBarActivity {
         return registrationId;
     }
 
-    /* Register with GCM in the background, returning the result back to the UI thread
+    /** Register with GCM in the background, returning the result back to the UI thread
 
      */
     private void registerInBackground() {
@@ -174,7 +233,9 @@ public class MainActivity extends ActionBarActivity {
                     regid = gcm.register(SENDER_ID);
                     Log.d(TAG, SENDER_ID + " registering " + regid);
                     msg = "Device registered, registration ID = " + regid;
+                    // Send the new registration number to SimplePush server
                     sendRegistrationIdToBackend(regid);
+                    // And remember it into the preferences.
                     storeRegistrationId(context, regid);
                 } catch (IOException ex) {
                     msg = "Error: registerInBackground: doInBackground: " + ex.getMessage();
@@ -183,6 +244,7 @@ public class MainActivity extends ActionBarActivity {
                 return msg;
             }
 
+            //Yay! A thing happened. We should let folks know about the thing.
             @Override
             protected void onPostExecute(String msg) {
                 mDisplay.append(msg + "\n");
@@ -190,36 +252,13 @@ public class MainActivity extends ActionBarActivity {
         }.execute(null, null, null);
     }
 
+    /** Button Handler
+     *
+     * @param view
+     */
     public void onClick(final View view) {
         if (view == findViewById(R.id.send)) {
-            String data = getMessage();
-            if (data.length() > 0) {
-                SendNotification(data);
-            }
-
-/*            new AsyncTask<Void, Void, String>() {
-                @Override
-            protected String doInBackground(Void... params) {
-                    String msg="";
-                    try {
-                        Bundle data = new Bundle();
-                        data.putString("my_message", "Hello World");
-                        data.putString("my_action", APP + ".ECHO_NOW");
-                        String id = Integer.toString(msgId.incrementAndGet());
-                        gcm.send(SENDER_ID + "@gcm.googleapis.com", id, data);
-                        msg = "Sent message";
-                    } catch (IOException ex) {
-                        msg = "Error : onClick: " + ex.getMessage();
-                        Log.e(TAG, msg);
-                    }
-                    return msg;
-                }
-                @Override
-            protected void onPostExecute(String msg) {
-                    mDisplay.setText(msg + "\n");
-                }
-            }.execute(null, null, null);
-            */
+            SendNotification(getMessage());
         } else if (view == findViewById(R.id.clear)) {
             mDisplay.setText("");
         } else if (view == findViewById(R.id.connect)) {
@@ -228,10 +267,15 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+    /** Send the notification to SimplePush
+     *
+     * @param data the notification string.
+     */
     private void SendNotification(final String data) {
         if (PushEndpoint.length() == 0) {
             return;
         }
+        // Run as a background task, passing the data string and getting a success bool.
         new AsyncTask<String, Void, Boolean>() {
             @Override
             protected Boolean doInBackground(String... params) {
@@ -241,6 +285,9 @@ public class MainActivity extends ActionBarActivity {
                 List<NameValuePair> rparams = new ArrayList<NameValuePair>(2);
                 rparams.add(new BasicNameValuePair("version",
                         String.valueOf(System.currentTimeMillis())));
+                // While we're just using a simple string here, there's no reason you couldn't
+                // have this be up to 4K of JSON. Just make sure that the GcmIntentService handler
+                // knows what to do with it.
                 rparams.add(new BasicNameValuePair("data", data));
                 Log.i(TAG, "Sending data: " + data);
                 try {
@@ -267,6 +314,10 @@ public class MainActivity extends ActionBarActivity {
                 return false;
             }
 
+            /** Report back on what just happened.
+             *
+             * @param success
+             */
             @Override
             protected void onPostExecute(Boolean success) {
                 String msg = "was";
@@ -278,20 +329,27 @@ public class MainActivity extends ActionBarActivity {
         }.execute(data, null, null);
     }
 
+    /** Fetch the message content from the UI
+     *
+     * @return
+     */
     private String getMessage() {
-        String target = ping_data.getText().toString();
-        if (target.length() > 0) {
-            Log.i(TAG, "Ping data set to " + target);
-        }
-        return target;
+        return pingData.getText().toString();
     }
 
+    /** Get the Push Host URL
+     *
+     * @return
+     */
     private String getTarget() {
-        String target = host_url.getText().toString();
-        Log.i(TAG, "Setting target to " + target);
+        String target = hostUrl.getText().toString();
+        Log.i(TAG, "Setting Push Host target to " + target);
         return target;
     }
 
+    /** Connection died. Do whatever cleanup you need to .
+     *
+     */
     @Override
     protected void onDestroy() {
         Log.i(TAG, "## Destroying");
@@ -303,13 +361,18 @@ public class MainActivity extends ActionBarActivity {
         return getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
     }
 
-    void ToSend(boolean state) {
-        host_url.setEnabled(!state);
-        connect_button.setEnabled(!state);
-        ping_data.setEnabled(state);
-        send_button.setEnabled(state);
+/*    void ToSend(boolean state) {
+        hostUrl.setEnabled(!state);
+        connectButton.setEnabled(!state);
+        pingData.setEnabled(state);
+        sendButton.setEnabled(state);
     }
+*/
 
+    /** Create a websocket connection and send the registration id to the Push Server.
+     *
+     * @param regid
+     */
     private void sendRegistrationIdToBackend(final String regid) {
         String target = getTarget();
         Log.i(TAG, "Sending out Registration message for RegId: " + regid + " to " + target);
@@ -322,11 +385,13 @@ public class MainActivity extends ActionBarActivity {
                 @Override
                 public void onMessage(String message) {
                     Log.i(TAG, "got message:" + message + "\n");
+                    // Handle pongs specially, since the json parser will choke on them.
                     if (message.equals("{}")) {
                         Log.i(TAG, "Pong...");
                         return;
                     }
                     try {
+                        // Parse the object.
                         JSONObject msg = new JSONObject(new JSONTokener(message));
                         String msgType = msg.getString("messageType");
                         switch (msgType) {
@@ -356,16 +421,22 @@ public class MainActivity extends ActionBarActivity {
                     }
                 }
 
+                /** A new connection has openned.
+                 *
+                 * @param handshake
+                 */
                 @Override
                 public void onOpen(ServerHandshake handshake) {
                     Log.i(TAG, "handshake with: " + getURI());
                     try {
+                        // Send a "hello" object
                         JSONObject json = new JSONObject();
                         JSONObject connect = new JSONObject();
                         connect.put("regid", regid);
                         json.put("messageType", "hello");
                         json.put("uaid", "");
                         json.put("channelIDs", new JSONArray());
+                        // "connect" is the proprietary ping content used by the server.
                         json.put("connect", connect);
                         Log.i(TAG, "Sending object: " + json.toString());
                         this.send(json.toString());
@@ -374,6 +445,12 @@ public class MainActivity extends ActionBarActivity {
                     }
                 }
 
+                /** Connection just died.
+                 *
+                 * @param code
+                 * @param reason
+                 * @param remote
+                 */
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
                     Log.i(TAG, "Disconnected! " + getURI() + " Code:" + code + " " + reason + "\n");
@@ -381,6 +458,10 @@ public class MainActivity extends ActionBarActivity {
                     //toggleConnectToSend(false);
                 }
 
+                /** Error reporting.
+                 *
+                 * @param ex
+                 */
                 @Override
                 public void onError(Exception ex) {
                     Log.e(TAG, "### EXCEPTION: " + ex + "\n");
@@ -392,13 +473,20 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+    /** Do something with the menu (I currently don't)
+     */
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
+        //getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
+    /** Do something with the something that should be on the menu I've not done things with.
+     *
+     * @param item
+     * @return
+     */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Handle action bar item clicks here. The action bar will

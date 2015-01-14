@@ -18,6 +18,13 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
+        <meta-data
+            android:name="SenderId"
+            android:value="1009375523940" />
+        <meta-data
+            android:name="ChannelID"
+            android:value="abad1dea-0000-0000-0000-000000000000" />
+
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name" >

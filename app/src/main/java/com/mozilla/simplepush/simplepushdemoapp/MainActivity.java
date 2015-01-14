@@ -96,6 +96,7 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+
     /** Initialize the app from the saved state
      *
      * @param savedInstanceState
@@ -269,6 +270,9 @@ public class MainActivity extends ActionBarActivity {
 
     /** Send the notification to SimplePush
      *
+     * This is normally what the App Server would do. We're handling it ourselves because
+     * this app is self-contained.
+     *
      * @param data the notification string.
      */
     private void SendNotification(final String data) {
@@ -371,6 +375,13 @@ public class MainActivity extends ActionBarActivity {
 
     /** Create a websocket connection and send the registration id to the Push Server.
      *
+     * A real app could drop the WebSocket connection after the "registration" response.
+     * This app keeps the connection open for debugging reasons. If a GCM notification fails
+     * (which happens, I was getting a string of 401 errors from GCM until the service
+     * decided to just let messages come through.), SimplePush falls back to "traditional"
+     * mechanisms and will try to send the message via the WebSocket connection. Granted,
+     * for real apps, having two socket connections open burns battery life, so don't do
+     * that.
      * @param regid
      */
     private void sendRegistrationIdToBackend(final String regid) {
@@ -379,6 +390,7 @@ public class MainActivity extends ActionBarActivity {
         //TODO: Put this in an async task?
         try {
             URI uri = new URI(target);
+            // Draft_17 is the final, production draft. Be sure to use that one only.
             WebSocketClient ws = new WebSocketClient(uri, new Draft_17()) {
                 private String TAG = "WEBSOCKET";
 
@@ -398,22 +410,35 @@ public class MainActivity extends ActionBarActivity {
                             case "hello":
                                 Log.i(TAG, "Sending registration message");
                                 JSONObject regObj = new JSONObject();
+                                // If this app were "real", we would only send a
+                                // registration if we wanted a new Channel. If we had
+                                // already registered (and were reconnecting) we would
+                                // not need to send a new registration message.
+                                // Each endpoint is tied to a UserAgentID + ChannelID, so
+                                // if you get a new UAID or ChannelID, any old Endpoint
+                                // becomes invalid.
                                 regObj.put("channelID", CHANNEL_ID);
                                 regObj.put("messageType", "register");
                                 this.send(regObj.toString());
                                 break;
                             case "register":
+                                // The ChannelID is registered, so get the new endpoint.
                                 PushEndpoint = msg.getString("pushEndpoint");
                                 String txt = "Registration successful: " +
                                         PushEndpoint;
                                 mDisplay.setText(txt);
                                 //toggleConnectToSend(true);
+                                // In theory, the WebSocket is no longer required at
+                                // this point.
                                 break;
                             case "notification":
+                                // A notification has arrived via SimplePush.
                                 mDisplay.append("\nGot SimplePush notification..." + message);
-                                // TODO: I should ack that.
+                                // TODO: I should ack this message.
                                 break;
                             default:
+                                // There are a few other messages possible, it's safe to
+                                // ignore them.
                                 Log.e(TAG, "Unknown message type " + msgType);
                         }
                     }catch (JSONException x) {
@@ -421,7 +446,7 @@ public class MainActivity extends ActionBarActivity {
                     }
                 }
 
-                /** A new connection has openned.
+                /** A new connection has opened.
                  *
                  * @param handshake
                  */
@@ -434,7 +459,13 @@ public class MainActivity extends ActionBarActivity {
                         JSONObject connect = new JSONObject();
                         connect.put("regid", regid);
                         json.put("messageType", "hello");
+                        // Generate a new UserAgentID. This *should* be unique per device
+                        // but since this is a demo app, we can just get a new one each
+                        // time the app is restarted. Mind you, older Push Endpoints are
+                        // instantly invalid in that case.
                         json.put("uaid", "");
+                        // Were this a real app, we'd include the list of registered
+                        // ChannelIDs here.
                         json.put("channelIDs", new JSONArray());
                         // "connect" is the proprietary ping content used by the server.
                         json.put("connect", connect);

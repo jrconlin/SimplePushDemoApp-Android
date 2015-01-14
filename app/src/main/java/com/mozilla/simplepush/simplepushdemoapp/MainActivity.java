@@ -6,6 +6,7 @@ package com.mozilla.simplepush.simplepushdemoapp;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.AsyncTask;
@@ -61,10 +62,11 @@ public class MainActivity extends ActionBarActivity {
     private static final String PROPERTY_APP_VERSION = "appVersion";
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     // The SENDER_ID is the Project Number from Google Developer's Console for this
-    // project. 
+    // project. This is a default value and will be replaced by the value stored in the Manifest.
     String SENDER_ID = "1009375523940";
     // ChannelID is the SimplePush channel. This is normally generated as a GUID by the
     // client, but since we're just doing tests and don't really care about the ChannelID...
+    // This is a default value and will be replaced by the value stored in the Manifest.
     String CHANNEL_ID = "abad1dea-0000-0000-0000-000000000000";
 
     // Various UI controls (TODO: need to add a handler here to allow them to be set from 
@@ -105,6 +107,19 @@ public class MainActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        context = getApplicationContext();
+
+        try {
+            ApplicationInfo ai = getPackageManager().getApplicationInfo(context.getPackageName(),
+                    PackageManager.GET_META_DATA);
+            Bundle bundle = ai.metaData;
+            SENDER_ID = bundle.getString("SenderId");
+            CHANNEL_ID = bundle.getString("ChannelId");
+        } catch (PackageManager.NameNotFoundException x) {
+            throw new RuntimeException("Could not get config info: " + x);
+        } catch (NullPointerException x) {
+            Log.e(TAG, "Couldn't get info " + x);
+        }
 
         // Set the convenience globals.
         mDisplay = (TextView) findViewById(R.id.display);
@@ -113,7 +128,6 @@ public class MainActivity extends ActionBarActivity {
         sendButton = (Button) findViewById(R.id.send);
         connectButton = (Button) findViewById(R.id.connect);
 
-        context = getApplicationContext();
         // Check that GCM is available on this device.
         if (checkPlayServices()) {
             gcm = GoogleCloudMessaging.getInstance(this);

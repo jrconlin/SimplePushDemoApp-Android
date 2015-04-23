@@ -113,8 +113,12 @@ public class MainActivity extends ActionBarActivity {
             ApplicationInfo ai = getPackageManager().getApplicationInfo(context.getPackageName(),
                     PackageManager.GET_META_DATA);
             Bundle bundle = ai.metaData;
-            SENDER_ID = bundle.getString("SenderId");
-            CHANNEL_ID = bundle.getString("ChannelId");
+            if (bundle.getString("SenderId") != null) {
+                SENDER_ID = bundle.getString("SenderId");
+            }
+            if (bundle.getString("ChannelId") != null) {
+                CHANNEL_ID = bundle.getString("ChannelId");
+            }
         } catch (PackageManager.NameNotFoundException x) {
             throw new RuntimeException("Could not get config info: " + x);
         } catch (NullPointerException x) {
@@ -342,7 +346,7 @@ public class MainActivity extends ActionBarActivity {
                 if (!success) {
                     msg = "was not";
                 }
-                mDisplay.setText("Message " + msg + " sent");
+                mDisplay.setText("Message " + msg + " sent\n");
             }
         }.execute(data, null, null);
     }
@@ -440,14 +444,14 @@ public class MainActivity extends ActionBarActivity {
                                 PushEndpoint = msg.getString("pushEndpoint");
                                 String txt = "Registration successful: " +
                                         PushEndpoint;
-                                mDisplay.setText(txt);
+                                mDisplay.setText(txt + "\n");
                                 //toggleConnectToSend(true);
                                 // In theory, the WebSocket is no longer required at
                                 // this point.
                                 break;
                             case "notification":
                                 // A notification has arrived via SimplePush.
-                                mDisplay.append("\nGot SimplePush notification..." + message);
+                                mDisplay.append("\nGot SimplePush notification..." + message + "\n");
                                 // TODO: I should ack this message.
                                 break;
                             default:
@@ -471,7 +475,8 @@ public class MainActivity extends ActionBarActivity {
                         // Send a "hello" object
                         JSONObject json = new JSONObject();
                         JSONObject connect = new JSONObject();
-                        connect.put("regid", regid);
+                        connect.put("type", "gcm");
+                        connect.put("token", regid);
                         json.put("messageType", "hello");
                         // Generate a new UserAgentID. This *should* be unique per device
                         // but since this is a demo app, we can just get a new one each

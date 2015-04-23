@@ -67,7 +67,10 @@ public class GcmIntentService extends IntentService {
      */
     private void displayNotification(Bundle bundle) {
         Log.d(TAG, "Got GCM notification: " + bundle.toString());
-        String msg = bundle.getString("msg");
+        // Use short identifiers from server.
+        String msg = bundle.getString("Msg");
+        String ver = bundle.getString("Ver");
+        msg = msg.concat(" : " + ver);
         // Currently this displays the notification. One can easily presume that this is not
         // required and that your app could do more interesting things internally.
         mNotificationManager = (NotificationManager)

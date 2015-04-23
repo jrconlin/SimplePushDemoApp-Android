@@ -86,7 +86,7 @@ public class MainActivity extends ActionBarActivity {
     /** get the app version from the package manifest
      *
      * @param context app Context
-     * @return
+     * @return appVersion version of the app
      */
     private static int getAppVersion(Context context) {
         try {
@@ -101,7 +101,7 @@ public class MainActivity extends ActionBarActivity {
 
     /** Initialize the app from the saved state
      *
-     * @param savedInstanceState
+     * @param savedInstanceState Previous state
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -186,7 +186,7 @@ public class MainActivity extends ActionBarActivity {
 
     /** Are we still able to use Play Services?
      *
-     * @return
+     * @return boolean
      */
     private boolean checkPlayServices() {
         int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
@@ -218,13 +218,13 @@ public class MainActivity extends ActionBarActivity {
 
         editor.putString(PROPERTY_REG_ID, regId);
         editor.putInt(PROPERTY_APP_VERSION, appVersion);
-        editor.commit();
+        editor.apply();
     }
 
     private String getRegistrationId(Context context) {
         final SharedPreferences prefs = getGcmPreferences(context);
         String registrationId = prefs.getString(PROPERTY_REG_ID, "");
-        if (registrationId.isEmpty()) {
+        if (registrationId != null && registrationId.isEmpty()) {
             Log.i(TAG, "Registration not found.");
             return "";
         }
@@ -244,7 +244,7 @@ public class MainActivity extends ActionBarActivity {
         new AsyncTask<Void, Void, String>() {
             @Override
             protected String doInBackground(Void... params) {
-                String msg = "";
+                String msg;
                 try {
                     if (gcm == null) {
                         gcm = GoogleCloudMessaging.getInstance(context);
@@ -273,7 +273,7 @@ public class MainActivity extends ActionBarActivity {
 
     /** Button Handler
      *
-     * @param view
+     * @param view current view
      */
     public void onClick(final View view) {
         if (view == findViewById(R.id.send)) {
@@ -304,7 +304,7 @@ public class MainActivity extends ActionBarActivity {
                 HttpPut req = new HttpPut(PushEndpoint);
                 // HttpParams is NOT what you use here.
                 // NameValuePairs is just a simple hash.
-                List<NameValuePair> rparams = new ArrayList<NameValuePair>(2);
+                List<NameValuePair> rparams = new ArrayList<>(2);
                 rparams.add(new BasicNameValuePair("version",
                         String.valueOf(System.currentTimeMillis())));
                 // While we're just using a simple string here, there's no reason you couldn't
@@ -338,7 +338,7 @@ public class MainActivity extends ActionBarActivity {
 
             /** Report back on what just happened.
              *
-             * @param success
+             * @param success boolean
              */
             @Override
             protected void onPostExecute(Boolean success) {
@@ -353,7 +353,7 @@ public class MainActivity extends ActionBarActivity {
 
     /** Fetch the message content from the UI
      *
-     * @return
+     * @return pingData as string
      */
     private String getMessage() {
         return pingData.getText().toString();
@@ -361,7 +361,7 @@ public class MainActivity extends ActionBarActivity {
 
     /** Get the Push Host URL
      *
-     * @return
+     * @return Host URL string
      */
     private String getTarget() {
         String target = hostUrl.getText().toString();
@@ -379,7 +379,7 @@ public class MainActivity extends ActionBarActivity {
         //TODO: Unregister?
     }
 
-    private SharedPreferences getGcmPreferences(Context context) {
+    private SharedPreferences getGcmPreferences(Context ignored) {
         return getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
     }
 
@@ -400,7 +400,7 @@ public class MainActivity extends ActionBarActivity {
      * mechanisms and will try to send the message via the WebSocket connection. Granted,
      * for real apps, having two socket connections open burns battery life, so don't do
      * that.
-     * @param regid
+     * @param regid Registration ID
      */
     private void sendRegistrationIdToBackend(final String regid) {
         String target = getTarget();
@@ -466,10 +466,10 @@ public class MainActivity extends ActionBarActivity {
 
                 /** A new connection has opened.
                  *
-                 * @param handshake
+                 * @param ignored is ignored
                  */
                 @Override
-                public void onOpen(ServerHandshake handshake) {
+                public void onOpen(ServerHandshake ignored) {
                     Log.i(TAG, "handshake with: " + getURI());
                     try {
                         // Send a "hello" object
@@ -497,9 +497,9 @@ public class MainActivity extends ActionBarActivity {
 
                 /** Connection just died.
                  *
-                 * @param code
-                 * @param reason
-                 * @param remote
+                 * @param code code for closure
+                 * @param reason reason for closure
+                 * @param remote was triggered by remote
                  */
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
@@ -510,7 +510,7 @@ public class MainActivity extends ActionBarActivity {
 
                 /** Error reporting.
                  *
-                 * @param ex
+                 * @param ex Exception
                  */
                 @Override
                 public void onError(Exception ex) {
@@ -534,8 +534,8 @@ public class MainActivity extends ActionBarActivity {
 
     /** Do something with the something that should be on the menu I've not done things with.
      *
-     * @param item
-     * @return
+     * @param item Menu item selected
+     * @return boolean
      */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

@@ -16,10 +16,6 @@ import android.util.Log;
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
 /**
- * Created by jconlin on 1/7/2015.
- */
-
-/**
  * Intent handler
  * <p/>
  * This deals with the incoming GCM notifications.
@@ -27,14 +23,13 @@ import com.google.android.gms.gcm.GoogleCloudMessaging;
 public class GcmIntentService extends IntentService {
     public static final int NOTIFICATION_ID = 1;
     public static final String TAG = "SimplepushDemo-Intent";
-    private NotificationManager mNotificationManager;
     public GcmIntentService() {
         super("GcmIntentService");
     }
 
     /** Handle the new event.
      *
-     * @param intent
+     * @param intent Message from GCM
      */
     @Override
     protected void onHandleIntent(Intent intent) {
@@ -63,9 +58,11 @@ public class GcmIntentService extends IntentService {
 
     /** Display the notification content via the Notification bar
      *
-     * @param bundle
+     * @param bundle Message bundle from GCM
      */
     private void displayNotification(Bundle bundle) {
+        NotificationManager mNotificationManager;
+
         Log.d(TAG, "Got GCM notification: " + bundle.toString());
         // Use short identifiers from server.
         String msg = bundle.getString("Msg");

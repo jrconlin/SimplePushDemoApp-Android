@@ -27,14 +27,13 @@ import com.google.android.gms.gcm.GoogleCloudMessaging;
 public class GcmIntentService extends IntentService {
     public static final int NOTIFICATION_ID = 1;
     public static final String TAG = "SimplepushDemo-Intent";
-    private NotificationManager mNotificationManager;
     public GcmIntentService() {
         super("GcmIntentService");
     }
 
     /** Handle the new event.
      *
-     * @param intent
+     * @param intent GCM message recv'd
      */
     @Override
     protected void onHandleIntent(Intent intent) {
@@ -63,22 +62,24 @@ public class GcmIntentService extends IntentService {
 
     /** Display the notification content via the Notification bar
      *
-     * @param bundle
+     * @param bundle Data bundle from GCM
      */
     private void displayNotification(Bundle bundle) {
         Log.d(TAG, "Got GCM notification: " + bundle.toString());
-        String msg = bundle.getString("msg");
+        String msg = bundle.getString("Msg"); // Server sends data as "Msg"
+        String ver = bundle.getString("Ver"); // and version as "Ver"
+        String display = msg +" (" + ver + ")";
         // Currently this displays the notification. One can easily presume that this is not
         // required and that your app could do more interesting things internally.
-        mNotificationManager = (NotificationManager)
+        NotificationManager mNotificationManager = (NotificationManager)
                 this.getSystemService(Context.NOTIFICATION_SERVICE);
         PendingIntent contentIntent = PendingIntent.getActivity(this, 0,
                 new Intent(this, MainActivity.class), 0);
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(this)
                 .setSmallIcon(R.drawable.ic_stat_gcm)
                 .setContentTitle("SimplePush Demo Notification")
-                .setStyle(new NotificationCompat.BigTextStyle().bigText(msg))
-                .setContentText(msg);
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(display))
+                .setContentText(display);
         mBuilder.setContentIntent(contentIntent);
         mNotificationManager.notify(NOTIFICATION_ID, mBuilder.build());
     }

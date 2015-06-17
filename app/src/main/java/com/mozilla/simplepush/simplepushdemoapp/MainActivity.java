@@ -29,24 +29,30 @@ import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.HTTP;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.drafts.Draft_17;
-import org.java_websocket.handshake.ServerHandshake;
-import org.json.JSONArray;
+import org.apache.http.util.EntityUtils;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 
 /**
@@ -62,7 +68,7 @@ public class MainActivity extends ActionBarActivity {
     private final static int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     // The SENDER_ID is the Project Number from Google Developer's Console for this
     // project. 
-    String SENDER_ID = "1009375523940";
+    String SENDER_ID;
     // ChannelID is the SimplePush channel. This is normally generated as a GUID by the
     // client, but since we're just doing tests and don't really care about the ChannelID...
     String CHANNEL_ID = "abad1dea-0000-0000-0000-000000000000";
@@ -80,11 +86,13 @@ public class MainActivity extends ActionBarActivity {
     // GCM RegistrationId 
     String regid;
     String PushEndpoint;
+    String UserAgentID;
+    String SharedSecret;
 
     /** get the app version from the package manifest
      *
      * @param context app Context
-     * @return
+     * @return version value
      */
     private static int getAppVersion(Context context) {
         try {
@@ -96,14 +104,39 @@ public class MainActivity extends ActionBarActivity {
         }
     }
 
+    private Properties loadProperties() throws IOException {
+        Properties prop = new Properties();
+        try {
+            InputStream fileStream = getResources().openRawResource(R.raw.app);
+            prop.load(fileStream);
+            fileStream.close();
+        } catch (FileNotFoundException x) {
+            this.err("No properties file found, have you included raw/app.properties?");
+        }
+        return prop;
+    }
 
     /** Initialize the app from the saved state
      *
-     * @param savedInstanceState
+     * @param savedInstanceState The previously stored instance
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+        Properties config;
+        try {
+            config = loadProperties();
+            SENDER_ID = config.getProperty("sender_id");
+            if (SENDER_ID == null) {
+                Log.e(TAG, "sender_id not definied in configuration file. Aborting");
+                return;
+            }
+        }catch (IOException x) {
+            Log.e(TAG, "Could not load properties");
+            return;
+        }
         setContentView(R.layout.activity_main);
 
         // Set the convenience globals.
@@ -168,7 +201,7 @@ public class MainActivity extends ActionBarActivity {
 
     /** Are we still able to use Play Services?
      *
-     * @return
+     * @return boolean
      */
     private boolean checkPlayServices() {
         int resultCode = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
@@ -200,13 +233,13 @@ public class MainActivity extends ActionBarActivity {
 
         editor.putString(PROPERTY_REG_ID, regId);
         editor.putInt(PROPERTY_APP_VERSION, appVersion);
-        editor.commit();
+        editor.apply();
     }
 
     private String getRegistrationId(Context context) {
         final SharedPreferences prefs = getGcmPreferences(context);
         String registrationId = prefs.getString(PROPERTY_REG_ID, "");
-        if (registrationId.isEmpty()) {
+        if (registrationId == null || registrationId.isEmpty()) {
             Log.i(TAG, "Registration not found.");
             return "";
         }
@@ -241,6 +274,8 @@ public class MainActivity extends ActionBarActivity {
                 } catch (IOException ex) {
                     msg = "Error: registerInBackground: doInBackground: " + ex.getMessage();
                     Log.e(TAG, msg);
+                } catch (Exception x) {
+                    Log.e(TAG, "Unknown exception " + x.toString());
                 }
                 return msg;
             }
@@ -255,7 +290,7 @@ public class MainActivity extends ActionBarActivity {
 
     /** Button Handler
      *
-     * @param view
+     * @param view App view
      */
     public void onClick(final View view) {
         if (view == findViewById(R.id.send)) {
@@ -265,6 +300,54 @@ public class MainActivity extends ActionBarActivity {
         } else if (view == findViewById(R.id.connect)) {
             Log.i(TAG, "## Connection requested");
             registerInBackground();
+        }
+    }
+
+    static char[] hexChars = "0123456789ABCDEF".toCharArray();
+
+    private String bytesToHex(byte[] buff) {
+        int len = buff.length;
+        char [] chars = new char[len * 2];
+        for (int i=0; i<len; i++) {
+            int j = buff[i] & 0xFF;
+            chars[i*2] = hexChars[j>>>4];
+            chars[i*2+1] = hexChars[j & 0x0F];
+        }
+        return new String(chars);
+    }
+
+    private byte[] hexToBytes(String hex) throws IOException{
+        int len = hex.length();
+        if (len % 2 == 1) {
+            hex = "0"+hex;
+            len += 1;
+        }
+        try {
+            byte[] buf = new byte[len / 2];
+            for (int i = 0; i < len; i += 2) {
+                buf[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) +
+                        Character.digit(hex.charAt(i + 1), 16));
+            }
+            return buf;
+        }catch (StringIndexOutOfBoundsException x) {
+            throw new IOException("Invalid hex string" + hex);
+        }
+    }
+
+    private String genSignature(UrlEncodedFormEntity body) throws IOException {
+        String content = EntityUtils.toString(body);
+        SecretKeySpec key = new SecretKeySpec(this.SharedSecret.getBytes("UTF-8"), "HmacSHA256");
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(key);
+            byte[] bytes = mac.doFinal(content.getBytes("UTF-8"));
+            return bytesToHex(bytes);
+        } catch (NoSuchAlgorithmException x) {
+            this.err("Invalid hash algo specified, failing " + x.toString());
+            throw new IOException("HmacSHA256 unavailable");
+        } catch (InvalidKeyException x) {
+            this.err("Invalid key specified, failing " + x.toString());
+            throw new IOException("Invalid Key");
         }
     }
 
@@ -286,7 +369,7 @@ public class MainActivity extends ActionBarActivity {
                 HttpPut req = new HttpPut(PushEndpoint);
                 // HttpParams is NOT what you use here.
                 // NameValuePairs is just a simple hash.
-                List<NameValuePair> rparams = new ArrayList<NameValuePair>(2);
+                List<NameValuePair> rparams = new ArrayList<>(2);
                 rparams.add(new BasicNameValuePair("version",
                         String.valueOf(System.currentTimeMillis())));
                 // While we're just using a simple string here, there's no reason you couldn't
@@ -302,6 +385,7 @@ public class MainActivity extends ActionBarActivity {
                     entity.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE,
                             "text/plain;charset=UTF-8"));
                     req.setEntity(entity);
+                    req.addHeader("Authorization", genSignature(entity));
                     DefaultHttpClient client = new DefaultHttpClient();
                     HttpResponse resp = client.execute(req);
                     int code = resp.getStatusLine().getStatusCode();
@@ -320,7 +404,7 @@ public class MainActivity extends ActionBarActivity {
 
             /** Report back on what just happened.
              *
-             * @param success
+             * @param success Status of post execution
              */
             @Override
             protected void onPostExecute(Boolean success) {
@@ -335,7 +419,7 @@ public class MainActivity extends ActionBarActivity {
 
     /** Fetch the message content from the UI
      *
-     * @return
+     * @return The User provided string to use as data
      */
     private String getMessage() {
         return pingData.getText().toString();
@@ -343,7 +427,7 @@ public class MainActivity extends ActionBarActivity {
 
     /** Get the Push Host URL
      *
-     * @return
+     * @return User provided Push host URL
      */
     private String getTarget() {
         String target = hostUrl.getText().toString();
@@ -361,146 +445,83 @@ public class MainActivity extends ActionBarActivity {
         //TODO: Unregister?
     }
 
+    /** Get the GCM Preferences
+     *
+     * @param context App Context
+     * @return shared preferences for the app.
+     */
     private SharedPreferences getGcmPreferences(Context context) {
         return getSharedPreferences(MainActivity.class.getSimpleName(), Context.MODE_PRIVATE);
     }
 
-/*    void ToSend(boolean state) {
-        hostUrl.setEnabled(!state);
-        connectButton.setEnabled(!state);
-        pingData.setEnabled(state);
-        sendButton.setEnabled(state);
+    /*    void ToSend(boolean state) {
+            hostUrl.setEnabled(!state);
+            connectButton.setEnabled(!state);
+            pingData.setEnabled(state);
+            sendButton.setEnabled(state);
+        }
+    */
+    private void err(String msg) {
+        mDisplay.setText("ERROR " + msg );
+        Log.e(TAG, msg);
     }
-*/
 
-    /** Create a websocket connection and send the registration id to the Push Server.
+    /** Send the registration id to the Push Server.
      *
-     * A real app could drop the WebSocket connection after the "registration" response.
-     * This app keeps the connection open for debugging reasons. If a GCM notification fails
-     * (which happens, I was getting a string of 401 errors from GCM until the service
-     * decided to just let messages come through.), SimplePush falls back to "traditional"
-     * mechanisms and will try to send the message via the WebSocket connection. Granted,
-     * for real apps, having two socket connections open burns battery life, so don't do
-     * that.
-     * @param regid
+     * Prior versions used a websocket based protocol to exchange this information. This
+     * meant that android libraries had to bring in a websocket protocol dependency (see previous
+     * versions of this code). This requirement was removed.
+     *
+     * @param regid GCM Registration ID
      */
     private void sendRegistrationIdToBackend(final String regid) {
         String target = getTarget();
-        Log.i(TAG, "Sending out Registration message for RegId: " + regid + " to " + target);
-        //TODO: Put this in an async task?
+        Log.i(TAG, "Sending out Regid " + regid + " to " + target);
+        JSONObject msg = new JSONObject();
         try {
-            URI uri = new URI(target);
-            // Draft_17 is the final, production draft. Be sure to use that one only.
-            WebSocketClient ws = new WebSocketClient(uri, new Draft_17()) {
-                private String TAG = "WEBSOCKET";
-
-                @Override
-                public void onMessage(String message) {
-                    Log.i(TAG, "got message:" + message + "\n");
-                    // Handle pongs specially, since the json parser will choke on them.
-                    if (message.equals("{}")) {
-                        Log.i(TAG, "Pong...");
-                        return;
-                    }
-                    try {
-                        // Parse the object.
-                        JSONObject msg = new JSONObject(new JSONTokener(message));
-                        String msgType = msg.getString("messageType");
-                        switch (msgType) {
-                            case "hello":
-                                Log.i(TAG, "Sending registration message");
-                                JSONObject regObj = new JSONObject();
-                                // If this app were "real", we would only send a
-                                // registration if we wanted a new Channel. If we had
-                                // already registered (and were reconnecting) we would
-                                // not need to send a new registration message.
-                                // Each endpoint is tied to a UserAgentID + ChannelID, so
-                                // if you get a new UAID or ChannelID, any old Endpoint
-                                // becomes invalid.
-                                regObj.put("channelID", CHANNEL_ID);
-                                regObj.put("messageType", "register");
-                                this.send(regObj.toString());
-                                break;
-                            case "register":
-                                // The ChannelID is registered, so get the new endpoint.
-                                PushEndpoint = msg.getString("pushEndpoint");
-                                String txt = "Registration successful: " +
-                                        PushEndpoint;
-                                mDisplay.setText(txt);
-                                //toggleConnectToSend(true);
-                                // In theory, the WebSocket is no longer required at
-                                // this point.
-                                break;
-                            case "notification":
-                                // A notification has arrived via SimplePush.
-                                mDisplay.append("\nGot SimplePush notification..." + message);
-                                // TODO: I should ack this message.
-                                break;
-                            default:
-                                // There are a few other messages possible, it's safe to
-                                // ignore them.
-                                Log.e(TAG, "Unknown message type " + msgType);
-                        }
-                    }catch (JSONException x) {
-                        Log.e(TAG, "Could not parse message " + x);
-                    }
+            JSONObject token = new JSONObject();
+            msg.put("type", "gcm");
+            msg.put("channelID", CHANNEL_ID);
+            token.put("token", regid);
+            msg.put("data", token);
+        } catch (JSONException x) {
+            this.err("Could not send registration " + x.toString());
+            return;
+        }
+        HttpPost req = new HttpPost(target);
+        try{
+            StringEntity body = new StringEntity(msg.toString());
+            body.setContentType("application/json");
+            body.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE,
+                    "text/plain; charset=UTF-8"));
+            req.setEntity(body);
+        } catch (UnsupportedEncodingException x) {
+            this.err("Could not format registration message " + x.toString());
+            return;
+        }
+        try {
+            DefaultHttpClient client = new DefaultHttpClient();
+            HttpResponse resp = client.execute(req);
+            int code = resp.getStatusLine().getStatusCode();
+            if (code < 200 || code > 299) {
+                this.err("Server failed to accept message " + EntityUtils.toString(resp.getEntity()));
+                return;
+            }
+            try {
+                JSONObject reply = new JSONObject(new JSONTokener(EntityUtils.toString(resp.getEntity())));
+                if (! this.CHANNEL_ID.equals(reply.getString("channelID"))) {
+                    this.err("Recieved inappropriate registration info: " +
+                            resp.getEntity().toString());
+                    return;
                 }
-
-                /** A new connection has opened.
-                 *
-                 * @param handshake
-                 */
-                @Override
-                public void onOpen(ServerHandshake handshake) {
-                    Log.i(TAG, "handshake with: " + getURI());
-                    try {
-                        // Send a "hello" object
-                        JSONObject json = new JSONObject();
-                        JSONObject connect = new JSONObject();
-                        connect.put("regid", regid);
-                        json.put("messageType", "hello");
-                        // Generate a new UserAgentID. This *should* be unique per device
-                        // but since this is a demo app, we can just get a new one each
-                        // time the app is restarted. Mind you, older Push Endpoints are
-                        // instantly invalid in that case.
-                        json.put("uaid", "");
-                        // Were this a real app, we'd include the list of registered
-                        // ChannelIDs here.
-                        json.put("channelIDs", new JSONArray());
-                        // "connect" is the proprietary ping content used by the server.
-                        json.put("connect", connect);
-                        Log.i(TAG, "Sending object: " + json.toString());
-                        this.send(json.toString());
-                    }catch (JSONException ex) {
-                        Log.e(TAG, "JSON Exception: " + ex);
-                    }
-                }
-
-                /** Connection just died.
-                 *
-                 * @param code
-                 * @param reason
-                 * @param remote
-                 */
-                @Override
-                public void onClose(int code, String reason, boolean remote) {
-                    Log.i(TAG, "Disconnected! " + getURI() + " Code:" + code + " " + reason + "\n");
-                    mDisplay.setText("Disconnected from server");
-                    //toggleConnectToSend(false);
-                }
-
-                /** Error reporting.
-                 *
-                 * @param ex
-                 */
-                @Override
-                public void onError(Exception ex) {
-                    Log.e(TAG, "### EXCEPTION: " + ex + "\n");
-                }
-            };
-            ws.connect();
-        }catch (URISyntaxException ex) {
-            Log.e(TAG, "Bad URL for websocket.");
+                this.PushEndpoint = reply.getString("endpoint");
+                this.UserAgentID = reply.getString("uaid");
+                this.SharedSecret = reply.getString("secret");
+            } catch (JSONException x) {
+                this.err("Could not parse registration info " + x.toString());
+            }
+        } catch (IOException x) {
+            this.err("Could not send registration " + x.toString());
         }
     }
 
@@ -515,8 +536,8 @@ public class MainActivity extends ActionBarActivity {
 
     /** Do something with the something that should be on the menu I've not done things with.
      *
-     * @param item
-     * @return
+     * @param item Selected menu item
+     * @return flag
      */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -533,4 +554,3 @@ public class MainActivity extends ActionBarActivity {
         return super.onOptionsItemSelected(item);
     }
 }
-

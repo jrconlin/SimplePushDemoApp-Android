@@ -9,7 +9,7 @@
     <string name="clear">Clear</string>
     <string name="no_content">Not connected to server</string>
     <string name="app_title">SimplePush Demo App</string>
-    <string name="push_host">wss://push.services.mozilla.org/</string>
+    <string name="push_host">http://192.168.57.20:8082/register</string>
     <string name="push_host_title">Push Host:</string>
     <string name="host_connect">Connect</string>
     <string name="test_message">Message to send</string>
